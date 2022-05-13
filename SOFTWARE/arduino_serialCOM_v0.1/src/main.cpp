@@ -57,6 +57,36 @@
 // float maxSpeed()
 // float speed()
 
+/*
+ * Stepper motors:
+ * https://ooznest.co.uk/wp-content/uploads/2019/02/OVM-Schematic.pdf
+https://www.electronicshub.org/arduino-mega-pinout/
+        delay(1000);    delay(1000);
+Stepper X
+        https://mauser.pt/catalog/product_info.php?cPath=324_2610_2613&products_id=096-6487
+        2.8V
+        1.68 A
+
+Steppers Y/Z
+brand: Creality 3D
+Item name: RepRap 42 Stepper Motor
+Item number: 42-40
+Step angle: 1.8 degrees
+Nominal Voltage: 4.83V
+Current Rating: 1.5 (A)  1.5 / 4 = 0.375 V
+Rated speed: 1-1000 (rpm)
+Rated torque: 0.4 (NM)
+Ambient Temperatuar: -20<E2><84><83>~+50<E2><84><83>
+Length: 40mm
+Application: 3D printer
+
+Current Limit = Vref/(5 * Rsesens)
+Rsense = 0.05Ohm
+CurrLimt = Vref*4
+Vref = 1.6 / 4 = 0.4V
+
+MODE0/1/2 = 1 ; 32 MICROSTEPS
+*/
 // =============================== Code starts here ================================================================
 
 #include <Arduino.h>
@@ -76,14 +106,19 @@
 #define Z_ACCEL 5000.0 // Z
 
 //#define EN        8       // stepper motor enable, low level effective (note put jumper so automatic)
+//#define X_STEP_PIN         54
+//#define X_DIR_PIN          55
+#define X_ENABLE       38
+#define Y_ENABLE       56
+#define Z_ENABLE       62
 
-#define X_DIR     2       // X axis, direction pin
-#define Y_DIR     4       // Y
-#define Z_DIR     6       // Z
+#define X_DIR     55       // X axis, direction pin
+#define Y_DIR     61       // Y
+#define Z_DIR     48       // Z
 
-#define X_STP     3       // X axis, step pin
-#define Y_STP     5       // Y
-#define Z_STP     7       // Z
+#define X_STP     54       // X axis, step pin
+#define Y_STP     60       // Y
+#define Z_STP     46      // Z
 
 #define BAUD_RATE 230400  // the rate at which data is read
 //#define BAUD_RATE 115200  // the rate at which data is read
@@ -109,10 +144,13 @@ boolean readInProgress = false;
 boolean newDataFromPC = false;
 
 // WRITE COMMAND: <RUN,DIST,123,F,0.0,0.0,0.0>
+//               <mode, 
 // The following is data we will read from the PC. Since the USB reads one byte at a time, we have to store a
 // string of bytes in an array called messageFromPC. Then we can grab the relevant information from it.
 // Note that in this application, a command sent from python takes the form: <mode, setting, motorID, value, direction, optional>
 // Where mode is ["RUN", "SETTING", "JOG", "STOP"]
+// When mode is "SETTING", use setting "DIST"
+// When mode is "SETTING":
 // setting is string ["ALL"", "FEW", "ONE", "ACCEL", "SPEED", "DELTA"]
 // motorID is int [1, 2, 3] (can be combo if numbers ie 123 or 12 or 23)
 // value is float [any positive floating number]
@@ -185,6 +223,16 @@ void setup() {
   // flash LEDs so we know we are alive
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
+  pinMode(X_ENABLE, OUTPUT);
+  digitalWrite(X_ENABLE, LOW); //Enable X DRV2588
+  pinMode(Y_ENABLE, OUTPUT);
+  digitalWrite(Y_ENABLE, LOW); //Enable Y DRV2588
+  pinMode(Z_ENABLE, OUTPUT);
+  digitalWrite(Z_ENABLE, LOW); //Enable Z DRV2588
+  stepper1.setEnablePin(X_ENABLE);
+ // setPinsInverted (bool directionInvert=false, bool stepInvert=false, bool enableInvert=false)
+  stepper1.setPinsInverted(false, false, true);
+
   delay(500); // delay() is OK in setup as it only happens once
   digitalWrite(LED_BUILTIN, LOW);
   delay(500);
@@ -200,7 +248,6 @@ void setup() {
   stepper3.setAcceleration(Z_ACCEL);
   // tell the PC we are ready
   Serial.println("<Arduino is ready>");
-
 
 }
 
@@ -343,16 +390,20 @@ void parseData() {
   }
 
 void clearVariables() {
-  char messageFromPC[buffSize] = {0};
-  char mode[buffSize] = {0};
-  char setting[buffSize] = {0};
-  int motorID = 0;
-  float value = 0.0;
-  char dir[buffSize] = {0};
+  memset(messageFromPC, 0, buffSize);
+  //char messageFromPC[buffSize] = {0};
+  memset(mode, 0, buffSize);
+  //char mode[buffSize] = {0};
+  memset(setting, 0, buffSize);
+//  char setting[buffSize] = {0};
+  motorID = 0;
+  value = 0.0;
+  memset(dir, 0, buffSize);
+//  char dir[buffSize] = {0};
 
-  float p1_optional = 0.0;
-  float p2_optional = 0.0;
-  float p3_optional = 0.0;
+  p1_optional = 0.0;
+  p2_optional = 0.0;
+  p3_optional = 0.0;
 }
 
 // =============================
