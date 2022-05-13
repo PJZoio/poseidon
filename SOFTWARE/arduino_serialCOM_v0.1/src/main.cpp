@@ -1,4 +1,4 @@
-
+/*
 // TODO:
 // (1) Figure out how to report distance remaining back to python
 // (2) Combine the run and jog functions into a move function
@@ -10,13 +10,12 @@
 // (2) With 32 microstepping, and a 200 step motor, there are effectively 6400 steps per rev
 // (3) The reporting the distance left will reutnr "steps remaining"
 
-// WRITE COMMAND: <RUN,DIST,123,F,0.0,0.0,0.0>
+// WRITE COMMAND: <RUN,DIST,123,F,1.0,0.0,0.0,0.0>
 
 // ======================================================
 // ACCELSTEPPER FUNCTIONS: returns fncName(argtype arg) [description]
 // ======================================================
-
-// SETTINGS
+// http://www.airspayce.com/mikem/arduino/AccelStepper/// SETTINGS
 // --------
 // void setMaxSpeed(float speed>0)            [run() will accelerate to speed in steps per sec]
 // void setAcceleration(float acceleration>0) [sets the accel in steps per sec per sec]
@@ -57,7 +56,6 @@
 // float maxSpeed()
 // float speed()
 
-/*
  * Stepper motors:
  * https://ooznest.co.uk/wp-content/uploads/2019/02/OVM-Schematic.pdf
 https://www.electronicshub.org/arduino-mega-pinout/
@@ -87,6 +85,7 @@ Vref = 1.6 / 4 = 0.4V
 
 MODE0/1/2 = 1 ; 32 MICROSTEPS
 */
+
 // =============================== Code starts here ================================================================
 
 #include <Arduino.h>
@@ -97,13 +96,17 @@ MODE0/1/2 = 1 ; 32 MICROSTEPS
 #define MICROSTEPS 32
 #define TOTAL_STEPS 6400
 
-#define X_SPEED 1000 // X steps per second
-#define Y_SPEED 1000 // Y
-#define Z_SPEED 1000 // Z
+// Motor steps per revolution. Most steppers are 200 steps or 1.8 degrees/step
+#define RPM 120.0
+#define FULL_TURN (MICROSTEPS * MOTOR_STEPS) // 6400
+
+#define X_SPEED 10000.0 // X steps per second  (12800.0 = 120 rpm)
+#define Y_SPEED X_SPEED // Y
+#define Z_SPEED X_SPEED // Z
 
 #define X_ACCEL 5000.0 // X steps per second per second
-#define Y_ACCEL 5000.0 // Y
-#define Z_ACCEL 5000.0 // Z
+#define Y_ACCEL X_ACCEL // Y
+#define Z_ACCEL X_ACCEL // Z
 
 //#define EN        8       // stepper motor enable, low level effective (note put jumper so automatic)
 //#define X_STEP_PIN         54
@@ -143,7 +146,8 @@ byte bytesRecvd = 0;
 boolean readInProgress = false;
 boolean newDataFromPC = false;
 
-// WRITE COMMAND: <RUN,DIST,123,F,0.0,0.0,0.0>
+// WRITE COMMAND: <RUN,DIST,123,F, 1.0,10000.0,1000.0,0.0>
+// WRITE COMMAND: <RUN,DIST,123,F,value,pi,p2,p3>
 //               <mode, 
 // The following is data we will read from the PC. Since the USB reads one byte at a time, we have to store a
 // string of bytes in an array called messageFromPC. Then we can grab the relevant information from it.
@@ -153,8 +157,8 @@ boolean newDataFromPC = false;
 // When mode is "SETTING":
 // setting is string ["ALL"", "FEW", "ONE", "ACCEL", "SPEED", "DELTA"]
 // motorID is int [1, 2, 3] (can be combo if numbers ie 123 or 12 or 23)
-// value is float [any positive floating number]
 // direction is ['F', 'B']
+// value is float [any positive floating number]
 // p1_optional is [any floating number]
 // p2_optional is [any floating number]
 // p3_optional is [any floating number]
@@ -223,15 +227,20 @@ void setup() {
   // flash LEDs so we know we are alive
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
-  pinMode(X_ENABLE, OUTPUT);
-  digitalWrite(X_ENABLE, LOW); //Enable X DRV2588
-  pinMode(Y_ENABLE, OUTPUT);
-  digitalWrite(Y_ENABLE, LOW); //Enable Y DRV2588
-  pinMode(Z_ENABLE, OUTPUT);
-  digitalWrite(Z_ENABLE, LOW); //Enable Z DRV2588
+
   stepper1.setEnablePin(X_ENABLE);
  // setPinsInverted (bool directionInvert=false, bool stepInvert=false, bool enableInvert=false)
   stepper1.setPinsInverted(false, false, true);
+  stepper1.enableOutputs();
+
+  stepper2.setEnablePin(Y_ENABLE);
+  stepper2.setPinsInverted(false, false, true);
+  stepper2.enableOutputs();
+  
+  stepper3.setEnablePin(Z_ENABLE);
+  stepper3.setPinsInverted(false, false, true);
+  stepper3.enableOutputs();
+
 
   delay(500); // delay() is OK in setup as it only happens once
   digitalWrite(LED_BUILTIN, LOW);
@@ -240,9 +249,6 @@ void setup() {
   stepper1.setMaxSpeed(X_SPEED);
   stepper2.setMaxSpeed(Y_SPEED);
   stepper3.setMaxSpeed(Z_SPEED);
-  // stepper1.setSpeed(X_SPEED);
-  // stepper2.setSpeed(Y_SPEED);
-  // stepper3.setSpeed(Z_SPEED);
   stepper1.setAcceleration(X_ACCEL);
   stepper2.setAcceleration(Y_ACCEL);
   stepper3.setAcceleration(Z_ACCEL);
