@@ -1,3 +1,7 @@
- <RUN,DIST,123,F,0.0,0.0,0.0>
- <RUN,DIST,123,11,F,10.0,0.0,0.0>
- <RUN,DIST,123,11,F,200.0,0.0,0.0>
+Exemplo Comando: 
+<RUN,DIST,123,11,F,6400,6400,6400>
+Resposta:
+<mode: RUN ,setting: DIST ,motorID: 123 ,value: 11.00 ,direction: F ,p1 optional: 6400.00 ,p2 optional: 6400.00 ,p3 optional: 6400.00 ,Time 10>
+
+ <RUN,DIST,123,11,F,6000.0,6000.0,6000.0>
+

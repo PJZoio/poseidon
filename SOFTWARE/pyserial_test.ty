@@ -1,0 +1,33 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import serial
+import time
+#import glob
+import sys
+from datetime import datetime
+import time
+import os
+# This gets the Qt stuff
+
+import numpy as np
+from decimal import Decimal
+# This is our window from QtCreator
+# import pdb
+# import traceback, sys
+
+# MOVE = f"		
+cmd = b'<RUN,DIST,123,0.0,F,6000,6000,6000>'
+
+
+# I feel better having one of these
+def main():
+    ser = serial.Serial('/dev/ttyUSB0', 115200)  # open serial port
+    print(ser.name)         # check which port was really used
+    #ser.write('{!r}'.format(cmd))     # write a string
+    ser.write(cmd)     # write a string
+    ser.write(b'hello')     # write a string
+    ser.close()             # close port
+
+if __name__ == "__main__":
+	main()
